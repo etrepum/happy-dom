@@ -4,6 +4,7 @@ import JSONModule from '../../module/JSONModule.js';
 import ModuleFactory from '../../module/ModuleFactory.js';
 import type IBrowserFrame from '../types/IBrowserFrame.js';
 import { Script } from 'vm';
+import * as PropertySymbol from '../../PropertySymbol.js';
 
 /**
  * Browser frame script evaluator.
@@ -20,6 +21,7 @@ export default class BrowserFrameScriptEvaluator {
 		if (!frame.window) {
 			throw new Error('The frame has been destroyed, the "window" property is not set.');
 		}
+		frame.window[PropertySymbol.ensureVMContext]();
 		script = typeof script === 'string' ? new Script(script) : script;
 		return script.runInContext(frame.window);
 	}

@@ -237,4 +237,63 @@ export default class WindowContextClassExtender {
 
 		/* eslint-enable jsdoc/require-jsdoc */
 	}
+
+	/**
+	 * Clears the window reference from the prototypes of the extended classes.
+	 *
+	 * This breaks the reference chain from class prototypes back to the window,
+	 * allowing the window and its entire object graph to be garbage collected.
+	 *
+	 * @param window Window.
+	 */
+	public static clearClasses(window: BrowserWindow): void {
+		const classNames = [
+			'Document',
+			'HTMLDocument',
+			'XMLDocument',
+			'DocumentFragment',
+			'Text',
+			'Comment',
+			'Image',
+			'Audio',
+			'MutationObserver',
+			'MessagePort',
+			'CSSStyleSheet',
+			'Headers',
+			'Request',
+			'Response',
+			'EventTarget',
+			'XMLHttpRequestUpload',
+			'XMLHttpRequestEventTarget',
+			'AbortController',
+			'AbortSignal',
+			'FormData',
+			'PermissionStatus',
+			'XMLHttpRequest',
+			'DOMParser',
+			'Range',
+			'VTTCue',
+			'TextTrack',
+			'TextTrackList',
+			'TextTrackCue',
+			'RemotePlayback',
+			'FileReader',
+			'MediaStream',
+			'MediaStreamTrack',
+			'CanvasCaptureMediaStreamTrack',
+			'URL',
+			'WebSocket'
+		];
+
+		for (const className of classNames) {
+			const cls = (<Record<string, unknown>>(<unknown>window))[className];
+			if (cls && typeof cls === 'function') {
+				(<Record<string | symbol, unknown>>cls.prototype)[PropertySymbol.window] = null;
+				const clsRecord = <Record<string | symbol, unknown>>(<unknown>cls);
+				if (clsRecord[PropertySymbol.window]) {
+					clsRecord[PropertySymbol.window] = null;
+				}
+			}
+		}
+	}
 }
