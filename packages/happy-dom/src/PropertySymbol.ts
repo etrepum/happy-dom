@@ -55,7 +55,6 @@ export const selectNode = Symbol('selectNode');
 export const selectedness = Symbol('selectedness');
 export const selection = Symbol('selection');
 export const setupVMContext = Symbol('setupVMContext');
-export const ensureVMContext = Symbol('ensureVMContext');
 export const shadowRoot = Symbol('shadowRoot');
 export const start = Symbol('start');
 export const style = Symbol('style');

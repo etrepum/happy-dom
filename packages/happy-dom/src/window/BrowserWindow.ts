@@ -1343,9 +1343,8 @@ export default class BrowserWindow extends EventTarget implements INodeJSGlobal 
 			// In this case, this means windows that have been opened by another window
 			this.#browserFrame[PropertySymbol.openerWindow]
 		) {
-			const page = this.#browserFrame.page;
 			this[PropertySymbol.destroy]();
-			page.close();
+			this.#browserFrame.page.close();
 		}
 	}
 
@@ -1842,9 +1841,6 @@ export default class BrowserWindow extends EventTarget implements INodeJSGlobal 
 	 * @param error Error.
 	 */
 	public [PropertySymbol.dispatchError](error: Error): void {
-		if (!this.#browserFrame) {
-			return;
-		}
 		this.#browserFrame.page.console.error(error);
 		this.dispatchEvent(new ErrorEvent('error', { message: error.message, error }));
 	}
@@ -1858,7 +1854,6 @@ export default class BrowserWindow extends EventTarget implements INodeJSGlobal 
 	 * @returns any.
 	 */
 	public [PropertySymbol.evaluateScript](code: string, options?: { filename?: string }): any {
-		this[PropertySymbol.ensureVMContext]();
 		return new VM.Script(code, options).runInContext(this);
 	}
 
@@ -1867,78 +1862,10 @@ export default class BrowserWindow extends EventTarget implements INodeJSGlobal 
 	 */
 	protected [PropertySymbol.setupVMContext](): void {
 		if (!VM.isContext(this)) {
-			if (!this.#browserFrame.page.context.browser.settings.enableJavaScriptEvaluation) {
-				// When JavaScript evaluation is not enabled at construction time,
-				// defer VM context creation to avoid native memory overhead.
-				// Assign globals directly from globalThis instead.
-				this.Array = globalThis.Array;
-				this.ArrayBuffer = globalThis.ArrayBuffer;
-				this.Boolean = globalThis.Boolean;
-				this.DataView = globalThis.DataView;
-				this.Date = globalThis.Date;
-				this.Error = globalThis.Error;
-				this.EvalError = globalThis.EvalError;
-				this.Float32Array = globalThis.Float32Array;
-				this.Float64Array = globalThis.Float64Array;
-				this.Function = globalThis.Function;
-				this.Infinity = globalThis.Infinity;
-				this.Int16Array = globalThis.Int16Array;
-				this.Int32Array = globalThis.Int32Array;
-				this.Int8Array = globalThis.Int8Array;
-				this.Intl = globalThis.Intl;
-				this.JSON = globalThis.JSON;
-				this.Map = globalThis.Map;
-				this.Math = globalThis.Math;
-				this.NaN = globalThis.NaN;
-				this.Number = globalThis.Number;
-				this.Object = globalThis.Object;
-				this.Promise = globalThis.Promise;
-				this.RangeError = globalThis.RangeError;
-				this.ReferenceError = globalThis.ReferenceError;
-				this.RegExp = globalThis.RegExp;
-				this.Set = globalThis.Set;
-				this.String = globalThis.String;
-				this.Symbol = globalThis.Symbol;
-				this.SyntaxError = globalThis.SyntaxError;
-				this.TypeError = globalThis.TypeError;
-				this.URIError = globalThis.URIError;
-				this.Uint16Array = globalThis.Uint16Array;
-				this.Uint32Array = globalThis.Uint32Array;
-				this.Uint8Array = globalThis.Uint8Array;
-				this.Uint8ClampedArray = globalThis.Uint8ClampedArray;
-				this.WeakMap = globalThis.WeakMap;
-				this.WeakSet = globalThis.WeakSet;
-				this.decodeURI = globalThis.decodeURI;
-				this.decodeURIComponent = globalThis.decodeURIComponent;
-				this.encodeURI = globalThis.encodeURI;
-				this.encodeURIComponent = globalThis.encodeURIComponent;
-				this.eval = globalThis.eval;
-				this.escape = globalThis.escape;
-				this.global = globalThis;
-				this.isFinite = globalThis.isFinite;
-				this.isNaN = globalThis.isNaN;
-				this.parseFloat = globalThis.parseFloat;
-				this.parseInt = globalThis.parseInt;
-				this.undefined = globalThis.undefined;
-				this.unescape = globalThis.unescape;
-				return;
-			}
-
 			VM.createContext(this);
 
 			// Sets global properties from the VM to the Window object.
 			// Otherwise "this.Array" will be undefined for example.
-			VMGlobalPropertyScript.runInContext(this);
-		}
-	}
-
-	/**
-	 * Ensures a VM context exists, creating one lazily if needed.
-	 * Called before any code evaluation (evaluate, evaluateScript, runInContext).
-	 */
-	public [PropertySymbol.ensureVMContext](): void {
-		if (!VM.isContext(this)) {
-			VM.createContext(this);
 			VMGlobalPropertyScript.runInContext(this);
 		}
 	}
@@ -2031,19 +1958,8 @@ export default class BrowserWindow extends EventTarget implements INodeJSGlobal 
 		// Clear parent/top references to break circular references
 		this[PropertySymbol.parent] = null;
 		this[PropertySymbol.top] = null;
-		this[PropertySymbol.self] = null;
-		this[PropertySymbol.window] = <BrowserWindow>(<unknown>null);
-		this[PropertySymbol.frames] = <BrowserWindow>(<unknown>null);
 
 		WindowBrowserContext.removeWindowBrowserFrameRelation(this);
-
-		// Clear prototype[PropertySymbol.window] references set by WindowContextClassExtender
-		// to break the reference chain from class prototypes back to this window.
-		WindowContextClassExtender.clearClasses(this);
-
-		// Null out the browser frame reference to allow the entire browser
-		// object graph (frame -> page -> context -> browser) to be GC'd.
-		this.#browserFrame = <IBrowserFrame>(<unknown>null);
 	}
 
 	/**
